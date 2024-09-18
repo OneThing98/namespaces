@@ -64,7 +64,7 @@ func getNsFds(container *container.Container) ([]uintptr, error) {
 	}
 
 	for _, ns := range namespaces {
-		fd, err := getNsFd(container.NSPid, ns)
+		fd, err := getNsFd(container.NsPid, ns)
 		if err != nil {
 			for _, fd = range fds {
 				syscall.Close(int(fd))
