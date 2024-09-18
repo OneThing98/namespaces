@@ -29,12 +29,12 @@ func ContainerExec(container *container.Container) (pid int, err error) {
 		return -1, ErrExistingNetworkNamespace
 	}
 
-	rootfs, err := resolveRootfs(container)
+	rootfs, err := ResolveRootfs(container)
 	if err != nil {
 		return -1, err
 	}
 
-	master, console, err := createMasterAndConsole()
+	master, console, err := CreateMasterAndConsole()
 	if err != nil {
 		return -1, err
 	}
@@ -52,14 +52,14 @@ func ContainerExec(container *container.Container) (pid int, err error) {
 	}
 
 	if pid == 0 {
-		if err := closeMasterAndStd(master); err != nil {
+		if err := CloseMasterAndStd(master); err != nil {
 			writeError("close master and std: %v", err)
 		}
-		slave, err := openTerminal(console, unix.O_RDWR)
+		slave, err := OpenTerminal(console, unix.O_RDWR)
 		if err != nil {
 			writeError("open terminal :%v", err)
 		}
-		if err := dupSlave(slave); err != nil {
+		if err := DupSlave(slave); err != nil {
 			writeError("dup2 slave: %v", err)
 		}
 		if container.NetNsFd > 0 {
