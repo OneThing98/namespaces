@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"syscall"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -22,7 +20,7 @@ func SetUpNewMountNameSpace(rootfs, console string, readonly bool) error {
 		return fmt.Errorf("mounting %s as bind %s", rootfs, err)
 	}
 	if readonly {
-		if err := mount(rootfs, rootfs, "bind", syscall.MS_BIND|syscall.MS_REMOUNT|syscall.MS_RDONLY|syscall.MS_REC, ""); err != nil {
+		if err := mount(rootfs, rootfs, "bind", unix.MS_BIND|unix.MS_REMOUNT|unix.MS_RDONLY|unix.MS_REC, ""); err != nil {
 			return fmt.Errorf("mounting %s as readonly %s", rootfs, err)
 		}
 	}
@@ -52,7 +50,7 @@ func SetUpNewMountNameSpace(rootfs, console string, readonly bool) error {
 		return fmt.Errorf("chdir into %s %s", rootfs, err)
 	}
 
-	if err := mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
+	if err := mount(rootfs, "/", "", unix.MS_MOVE, ""); err != nil {
 		return fmt.Errorf("mount move %s into / %s", rootfs, err)
 	}
 
@@ -127,7 +125,7 @@ func setupConsole(rootfs, console string) error {
 	if err != nil {
 		return fmt.Errorf("stat console %s %s", console, err)
 	}
-	st := stat.Sys().(*syscall.Stat_t)
+	st := stat.Sys().(*unix.Stat_t)
 
 	dest := filepath.Join(rootfs, "dev/console")
 
@@ -157,10 +155,10 @@ func mountSystem(rootfs string) error {
 	}{
 		{source: "proc", path: filepath.Join(rootfs, "proc"), device: "proc", flags: defaults},
 		{source: "sysfs", path: filepath.Join(rootfs, "sys"), device: "sysfs", flags: defaults},
-		{source: "tmpfs", path: filepath.Join(rootfs, "dev"), device: "tmpfs", flags: syscall.MS_NOSUID | syscall.MS_STRICTATIME, data: "mode=755"},
+		{source: "tmpfs", path: filepath.Join(rootfs, "dev"), device: "tmpfs", flags: unix.MS_NOSUID | unix.MS_STRICTATIME, data: "mode=755"},
 		{source: "shm", path: filepath.Join(rootfs, "dev", "shm"), device: "tmpfs", flags: defaults, data: "mode=1777"},
-		{source: "devpts", path: filepath.Join(rootfs, "dev", "pts"), device: "devpts", flags: syscall.MS_NOSUID | syscall.MS_NOEXEC, data: "newinstance,ptmxmode=0666,mode=620,gid=5"},
-		{source: "tmpfs", path: filepath.Join(rootfs, "run"), device: "tmpfs", flags: syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_STRICTATIME, data: "mode=755"},
+		{source: "devpts", path: filepath.Join(rootfs, "dev", "pts"), device: "devpts", flags: unix.MS_NOSUID | unix.MS_NOEXEC, data: "newinstance,ptmxmode=0666,mode=620,gid=5"},
+		{source: "tmpfs", path: filepath.Join(rootfs, "run"), device: "tmpfs", flags: unix.MS_NOSUID | unix.MS_NODEV | unix.MS_STRICTATIME, data: "mode=755"},
 	}
 
 	for _, m := range mounts {
