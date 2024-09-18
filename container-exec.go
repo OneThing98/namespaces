@@ -127,7 +127,7 @@ func ContainerExec(container *container.Container) (pid int, err error) {
 
 // spawns a new command inside an existing container's namespace
 func ContainerExecIn(container *container.Container, cmd *container.Command) (int, error) {
-	if container.NSPid <= 0 {
+	if container.NsPid <= 0 {
 		return -1, errors.New("invalid container PID")
 	}
 
