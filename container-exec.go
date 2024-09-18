@@ -24,7 +24,7 @@ var (
 )
 
 // spawns new namespaces and runs the specified containerized process.
-func containerExec(container *container.Container) (pid int, err error) {
+func ContainerExec(container *container.Container) (pid int, err error) {
 	if container.NetNsFd > 0 && container.Namespaces.Container("CLONE_NEWNET") {
 		return -1, ErrExistingNetworkNamespace
 	}
@@ -126,7 +126,7 @@ func containerExec(container *container.Container) (pid int, err error) {
 }
 
 // spawns a new command inside an existing container's namespace
-func containerExecIn(container *container.Container, cmd *container.Command) (int, error) {
+func ContainerExecIn(container *container.Container, cmd *container.Command) (int, error) {
 	if container.NSPid <= 0 {
 		return -1, errors.New("invalid container PID")
 	}
@@ -203,7 +203,7 @@ func containerExecIn(container *container.Container, cmd *container.Command) (in
 	return pid, err
 }
 
-func resolveRootfs(container *container.Container) (string, error) {
+func ResolveRootfs(container *container.Container) (string, error) {
 	rootfs, err := filepath.Abs(container.RootFs)
 	if err != nil {
 		return "", err
@@ -211,7 +211,7 @@ func resolveRootfs(container *container.Container) (string, error) {
 	return filepath.EvalSymlinks(rootfs)
 }
 
-func createMasterAndConsole() (*os.File, string, error) {
+func CreateMasterAndConsole() (*os.File, string, error) {
 	master, err := os.OpenFile("/dev/ptmx", unix.O_RDWR|unix.O_NOCTTY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, "", err
@@ -229,7 +229,7 @@ func createMasterAndConsole() (*os.File, string, error) {
 	return master, console, nil
 }
 
-func closeMasterAndStd(master *os.File) error {
+func CloseMasterAndStd(master *os.File) error {
 	closefd(master.Fd())
 	closefd(0)
 	closefd(1)
@@ -237,7 +237,7 @@ func closeMasterAndStd(master *os.File) error {
 	return nil
 }
 
-func openTerminal(name string, flag int) (*os.File, error) {
+func OpenTerminal(name string, flag int) (*os.File, error) {
 	r, e := unix.Open(name, flag, 0)
 
 	if e != nil {
@@ -247,7 +247,7 @@ func openTerminal(name string, flag int) (*os.File, error) {
 	return os.NewFile(uintptr(r), name), nil
 }
 
-func dupSlave(slave *os.File) error {
+func DupSlave(slave *os.File) error {
 	//It means that stdout (fd 1) and stderr (fd 2) are now pointing to the same file (the slave PTY) as slave.Fd().
 	if slave.Fd() != 0 {
 		return fmt.Errorf("slave fd not 0:%d", slave.Fd())
