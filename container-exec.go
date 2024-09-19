@@ -48,7 +48,7 @@ func ContainerExec(container *container.Container) (pid int, err error) {
 
 	// Attempt to open the log file before setting the log output
 	log.Println("Opening log file for container execution")
-	logger, err := os.OpenFile("/tmp/logs", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
+	logger, err := os.OpenFile("/root/logs", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		log.Printf("Error opening log file: %v", err)
 		return -1, err
