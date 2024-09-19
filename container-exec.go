@@ -46,13 +46,17 @@ func ContainerExec(container *container.Container) (pid int, err error) {
 		return -1, err
 	}
 
+	// Attempt to open the log file before setting the log output
 	log.Println("Opening log file for container execution")
 	logger, err := os.OpenFile("/root/logs", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		log.Printf("Error opening log file: %v", err)
 		return -1, err
 	}
+
+	// Only set the log output to the log file if it was successfully opened
 	log.SetOutput(logger)
+	log.Println("Log file opened successfully and log output set")
 
 	log.Println("Getting namespace flags and starting the cloning process")
 	flag := getNamespaceFlags(container.Namespaces) | unix.CLONE_VFORK | int(unix.SIGCHLD)
@@ -157,7 +161,6 @@ func ContainerExec(container *container.Container) (pid int, err error) {
 	log.Println("Returning from ContainerExec")
 	return pid, nil
 }
-
 
 // spawns a new command inside an existing container's namespace
 func ContainerExecIn(container *container.Container, cmd *container.Command) (int, error) {
