@@ -64,55 +64,57 @@ func ContainerExec(container *libcontainer.Container) error {
 }
 
 func SetupRootFilesystem(container *libcontainer.Container) error {
-    rootfs := container.RootFs
+	rootfs := container.RootFs
 
-    // Ensure the new root filesystem exists
-    if _, err := os.Stat(rootfs); os.IsNotExist(err) {
-        return fmt.Errorf("root filesystem does not exist: %v", rootfs)
-    }
+	// Ensure the new root filesystem exists
+	if _, err := os.Stat(rootfs); os.IsNotExist(err) {
+		return fmt.Errorf("root filesystem does not exist: %v", rootfs)
+	}
 
-    // Bind mount the rootfs to itself, making it private
-    if err := unix.Mount(rootfs, rootfs, "bind", unix.MS_BIND|unix.MS_REC, ""); err != nil {
-        return fmt.Errorf("failed to bind mount rootfs: %v", err)
-    }
+	// Mount the rootfs to itself, making it private
+	if err := unix.Mount("", "/", "", unix.MS_PRIVATE|unix.MS_REC, ""); err != nil {
+		return fmt.Errorf("failed to make / a private mount: %v", err)
+	}
+	if err := unix.Mount(rootfs, rootfs, "bind", unix.MS_BIND|unix.MS_REC, ""); err != nil {
+		return fmt.Errorf("failed to bind mount rootfs: %v", err)
+	}
 
-    // Create a directory for the old root inside the new root
-    putOld := filepath.Join(rootfs, ".pivot_root")
-    if err := os.MkdirAll(putOld, 0700); err != nil {
-        return fmt.Errorf("failed to create pivot_root directory: %v", err)
-    }
+	// Create a directory for the old root inside the new root
+	putOld := filepath.Join(rootfs, ".pivot_root")
+	if err := os.MkdirAll(putOld, 0700); err != nil {
+		return fmt.Errorf("failed to create pivot_root directory: %v", err)
+	}
 
-    // Change the current working directory to the new root
-    if err := unix.Chdir(rootfs); err != nil {
-        return fmt.Errorf("failed to chdir to new root: %v", err)
-    }
+	// Change the current working directory to the new root
+	if err := unix.Chdir(rootfs); err != nil {
+		return fmt.Errorf("failed to chdir to new root: %v", err)
+	}
 
-    // Perform pivot_root: move the root filesystem to the new root
-    if err := unix.PivotRoot(rootfs, putOld); err != nil {
-        return fmt.Errorf("pivot_root failed: %v", err)
-    }
+	// Perform pivot_root: move the root filesystem to the new root
+	if err := unix.PivotRoot(rootfs, putOld); err != nil {
+		return fmt.Errorf("pivot_root failed: %v", err)
+	}
 
-    // Change the current working directory to "/"
-    if err := unix.Chdir("/"); err != nil {
-        return fmt.Errorf("failed to chdir to new root after pivot_root: %v", err)
-    }
+	// Change the current working directory to "/"
+	if err := unix.Chdir("/"); err != nil {
+		return fmt.Errorf("failed to chdir to new root after pivot_root: %v", err)
+	}
 
-    // Mount /proc
-    if err := unix.Mount("proc", "/proc", "proc", 0, ""); err != nil {
-        return fmt.Errorf("failed to mount /proc: %v", err)
-    }
+	if err := unix.Mount("proc", "/proc", "proc", 0, ""); err != nil {
+    		return fmt.Errorf("failed to mount /proc: %v", err)
+	}
 
-    // Unmount the old root (now at /.pivot_root)
-    putOld = "/.pivot_root"
-    if err := unix.Unmount(putOld, unix.MNT_DETACH); err != nil {
-        return fmt.Errorf("failed to unmount old root: %v", err)
-    }
 
-    // Remove the old root directory
-    if err := os.RemoveAll(putOld); err != nil {
-        return fmt.Errorf("failed to remove old root directory: %v", err)
-    }
+	// Unmount the old root (now at /.pivot_root)
+	putOld = "/.pivot_root"
+	if err := unix.Unmount(putOld, unix.MNT_DETACH); err != nil {
+		return fmt.Errorf("failed to unmount old root: %v", err)
+	}
 
-    return nil
+	// Remove the old root directory
+	if err := os.RemoveAll(putOld); err != nil {
+		return fmt.Errorf("failed to remove old root directory: %v", err)
+	}
+
+	return nil
 }
-
