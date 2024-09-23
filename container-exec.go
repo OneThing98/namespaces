@@ -29,7 +29,7 @@ func ContainerExec(container *libcontainer.Container) error {
 		}
 
 		// Set up root filesystem (pivot_root)
-		if err := setupRootFilesystem(container); err != nil {
+		if err := SetupRootFilesystem(container); err != nil {
 			return fmt.Errorf("failed to setup rootfs: %v", err)
 		}
 
