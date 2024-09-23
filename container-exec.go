@@ -71,7 +71,10 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 		return fmt.Errorf("root filesystem does not exist: %v", rootfs)
 	}
 
-	// Bind mount the rootfs to itself, making it private
+	// Mount the rootfs to itself, making it private
+	if err := unix.Mount("", "/", "", unix.MS_PRIVATE|unix.MS_REC, ""); err != nil {
+		return fmt.Errorf("failed to make / a private mount: %v", err)
+	}
 	if err := unix.Mount(rootfs, rootfs, "bind", unix.MS_BIND|unix.MS_REC, ""); err != nil {
 		return fmt.Errorf("failed to bind mount rootfs: %v", err)
 	}
