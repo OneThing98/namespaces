@@ -82,6 +82,11 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 		return fmt.Errorf("failed to create pivot_root directory: %v", err)
 	}
 
+	// Change the current working directory to the new root
+	if err := unix.Chdir(rootfs); err != nil {
+		return fmt.Errorf("failed to chdir to new root: %v", err)
+	}
+
 	// Perform pivot_root: move the root filesystem to the new root
 	if err := unix.PivotRoot(rootfs, putOld); err != nil {
 		return fmt.Errorf("pivot_root failed: %v", err)
@@ -89,7 +94,7 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 
 	// Change the current working directory to "/"
 	if err := unix.Chdir("/"); err != nil {
-		return fmt.Errorf("failed to chdir to new root: %v", err)
+		return fmt.Errorf("failed to chdir to new root after pivot_root: %v", err)
 	}
 
 	// Unmount the old root (now at /.pivot_root)
