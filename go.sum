@@ -1,14 +1,4 @@
-github.com/OneThing98/Ghost v0.0.0-20240906034050-436ed6e6ae7c h1:ePOEE9Q+UI/5Gej0eg3AwsIVpCcmgU/FmmmxoCjNZg0=
-github.com/OneThing98/Ghost v0.0.0-20240906034050-436ed6e6ae7c/go.mod h1:77NvbZ3qy8eKtR+XDs4GfTl6/XFEssjvy/7eTCu5vDs=
-github.com/OneThing98/capabilities v0.0.0-20240912111317-34391a4db4f9 h1:E+JIaMCMTqd39/dCUf7/9ShjMI2MHhva4C1L4WOH8+s=
-github.com/OneThing98/capabilities v0.0.0-20240912111317-34391a4db4f9/go.mod h1:2hsX7y4wOrXh2bcwIKqbrX8sxpDAv0f047TTAm33qdc=
-github.com/OneThing98/capability v0.0.0-20240828235037-294dec2f681a h1:Sy3C6gHRiV6w4uGR61+kgxPafW3aA8A3U3gMswbzVY0=
-github.com/OneThing98/capability v0.0.0-20240828235037-294dec2f681a/go.mod h1:SuMSYk2fOPyDDj4dGE8lzrv6Pi/64TjeUywoFHlKGz4=
-github.com/OneThing98/containerpkg v0.0.0-20240828054228-bc4653df4ad0 h1:yr9/wyxS7HNbLyaEqKd2eTPCdkGmXP/ch9W2+POjaVY=
-github.com/OneThing98/containerpkg v0.0.0-20240828054228-bc4653df4ad0/go.mod h1:cM/r0u4nmwTw/cglwHjEoVPEdt3cHxrz8peFLg7I9vw=
-github.com/OneThing98/utils v0.0.0-20240911045841-428d32973ab0 h1:rIb89uRdrBkSY4GBURD/4/iL+tSVrJdJqrAd3WYxnDo=
-github.com/OneThing98/utils v0.0.0-20240911045841-428d32973ab0/go.mod h1:4EurOnfmmoHhlRAlkQc6SQ4oshImXsZywBNWf5FEnr4=
-golang.org/x/sys v0.24.0 h1:Twjiwq9dn6R1fQcyiK+wQyHWfaz/BJB+YIpzU/Cv3Xg=
-golang.org/x/sys v0.24.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+github.com/OneThing98/containerpkg v0.0.0-20240913104539-60198290334d h1:jKxR8ckxqzkQ9WSfkAC2WMajqQQJCxNZ345YqvgX0Cs=
+github.com/OneThing98/containerpkg v0.0.0-20240913104539-60198290334d/go.mod h1:cM/r0u4nmwTw/cglwHjEoVPEdt3cHxrz8peFLg7I9vw=
 golang.org/x/sys v0.25.0 h1:r+8e+loiHxRqhXVl6ML1nO3l1+oFoWbnlu2Ehimmi34=
 golang.org/x/sys v0.25.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=

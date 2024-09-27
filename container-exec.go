@@ -10,8 +10,23 @@ import (
 	libcontainer "github.com/OneThing98/containerpkg"
 )
 
+func JoinExistingNamespace(fd uintptr, ns libcontainer.Namespace) error {
+	if err := unix.Setns(int(fd), 0); err != nil {
+		return fmt.Errorf("failed to join existing namespace: %v", err)
+	}
+	fmt.Printf("Successfully joined %s namespace. \n", ns)
+	return nil
+}
+
 func ContainerExec(container *libcontainer.Container) error {
 	flags := unix.CLONE_NEWPID | unix.CLONE_NEWUTS | unix.CLONE_NEWNS | unix.CLONE_NEWIPC | unix.SIGCHLD
+
+	if container.NetNsFd > 0 {
+		if err := joinExistingNamespace(container.NetNsFd, libcontainer.CLONE_NEWNET); err != nil {
+			return fmt.Errorf("failed to join existing namespace: %v", err)
+		}
+		flags &= ^unix.CLONE_NEWNET
+	}
 
 	pid, _, errno := unix.RawSyscall(unix.SYS_CLONE, uintptr(flags), 0, 0)
 	if errno != 0 {
@@ -88,9 +103,8 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 	}
 
 	if err := unix.Mount("proc", "/proc", "proc", 0, ""); err != nil {
-    		return fmt.Errorf("failed to mount /proc: %v", err)
+		return fmt.Errorf("failed to mount /proc: %v", err)
 	}
-
 
 	putOld = "/.pivot_root"
 	if err := unix.Unmount(putOld, unix.MNT_DETACH); err != nil {
