@@ -22,7 +22,7 @@ func ContainerExec(container *libcontainer.Container) error {
 	flags := unix.CLONE_NEWPID | unix.CLONE_NEWUTS | unix.CLONE_NEWNS | unix.CLONE_NEWIPC | unix.SIGCHLD
 
 	if container.NetNsFd > 0 {
-		if err := joinExistingNamespace(container.NetNsFd, libcontainer.CLONE_NEWNET); err != nil {
+		if err := JoinExistingNamespace(container.NetNsFd, libcontainer.CLONE_NEWNET); err != nil {
 			return fmt.Errorf("failed to join existing namespace: %v", err)
 		}
 		flags &= ^unix.CLONE_NEWNET
@@ -68,6 +68,76 @@ func ContainerExec(container *libcontainer.Container) error {
 		return fmt.Errorf("fork failed: %v", errno)
 	}
 
+	return nil
+}
+
+func createMasterAndConsole() (*os.File, string, error) {
+	master, err := os.OpenFile("/dev/ptmx", unix.O_RDWR|unix.O_NOCTTY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, "", err
+	}
+	console, err := PTSName(master)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := UnlockPT(master); err != nil {
+		return nil, "", err
+	}
+	return master, console, nil
+}
+
+func closeMasterAndStd(master *os.File) error {
+	if err := unix.Close(int(master.Fd())); err != nil {
+		return fmt.Errorf("failed to close master: %v", err)
+	}
+	if err := unix.Close(0); err != nil {
+		return fmt.Errorf("failed to close stdin: %v", err)
+	}
+	if err := unix.Close(1); err != nil {
+		return fmt.Errorf("failed to close stdout: %v", err)
+	}
+	if err := unix.Close(2); err != nil {
+		return fmt.Errorf("failed to close stderr: %v", err)
+	}
+	return nil
+}
+
+func openTerminal(name string, flag int) (*os.File, error) {
+	r, e := unix.Open(name, flag, 0)
+	if e != nil {
+		return nil, &os.PathError{"open", name, e}
+	}
+	return os.NewFile(uintptr(r), name), nil
+}
+
+func dupSlave(slave *os.File) error {
+	if err := unix.Dup2(int(slave.Fd()), 1); err != nil {
+		return err
+	}
+	if err := unix.Dup2(int(slave.Fd()), 2); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setupConsole(rootfs, console string) error {
+	stat, err := os.Stat(console)
+	if err != nil {
+		return fmt.Errorf("stat console %s: %v", console, err)
+	}
+	st := stat.Sys().(*unix.Stat_t)
+	dest := filepath.Join(rootfs, "dev/console")
+
+	if err := os.Remove(dest); err != nil && os.IsNotExist(err) {
+		return fmt.Errorf("remove old console: %v", err)
+	}
+	if err := os.Chmod(console, 0600); err != nil {
+		return fmt.Errorf("chmod console: %v", err)
+	}
+
+	if err := unix.Mknod(dest, st.Mode, int(st.Rdev)); err != nil {
+		return fmt.Errorf("mknod console: %v", err)
+	}
 	return nil
 }
 
