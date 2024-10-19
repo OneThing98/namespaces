@@ -21,12 +21,12 @@ func JoinExistingNamespace(fd uintptr, ns libcontainer.Namespace) error {
 func ContainerExec(container *libcontainer.Container) error {
 	flags := unix.CLONE_NEWPID | unix.CLONE_NEWUTS | unix.CLONE_NEWNS | unix.CLONE_NEWIPC | unix.SIGCHLD
 
-	if container.NetNsFd > 0 {
-		if err := JoinExistingNamespace(container.NetNsFd, libcontainer.CLONE_NEWNET); err != nil {
-			return fmt.Errorf("failed to join existing namespace: %v", err)
-		}
-		flags &= ^unix.CLONE_NEWNET
-	}
+	// if container.NetNsFd > 0 {
+	// 	if err := JoinExistingNamespace(container.NetNsFd, libcontainer.CLONE_NEWNET); err != nil {
+	// 		return fmt.Errorf("failed to join existing namespace: %v", err)
+	// 	}
+	// 	flags &= ^unix.CLONE_NEWNET
+	// }
 
 	pid, _, errno := unix.RawSyscall(unix.SYS_CLONE, uintptr(flags), 0, 0)
 	if errno != 0 {
@@ -42,6 +42,32 @@ func ContainerExec(container *libcontainer.Container) error {
 
 		if err := SetupRootFilesystem(container); err != nil {
 			return fmt.Errorf("failed to setup rootfs: %v", err)
+		}
+		//setup terminal handling for the container
+		master, console, err := createMasterAndConsole()
+		if err != nil {
+			return fmt.Errorf("failed to create console, %v", err)
+		}
+
+		//close master and std fd for the container process
+		if err := closeMasterAndStd(master); err != nil {
+			return fmt.Errorf("failed to close master and std: %v", err)
+		}
+
+		//open slave terminal
+		slave, err := openTerminal(console, unix.O_RDWR)
+		if err != nil {
+			return fmt.Errorf("failed to open slave terminal: %v", err)
+		}
+
+		//duplicate slave to stdout and stderr
+		if err := dupSlave(slave); err != nil {
+			return fmt.Errorf("failed to duplicate slave: %v", err)
+		}
+
+		//setup /dev/console inside the container
+		if err := setupConsole(container.RootFs, console); err != nil {
+			return fmt.Errorf("failed to setup console: %v", err)
 		}
 
 		if err := unix.Exec(container.Command.Args[0], container.Command.Args, os.Environ()); err != nil {
