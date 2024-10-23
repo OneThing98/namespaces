@@ -202,7 +202,7 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 		return fmt.Errorf("failed to mount /proc: %v", err)
 	}
 
-	if err := unix.Mount("devpts", filepath.Join(rootfs, "dev/pts"), "devpts", 0, ""); err != nil {
+	if err := unix.Mount("devpts", filepath.Join(rootfs, "/dev/pts"), "devpts", 0, ""); err != nil {
 		return fmt.Errorf("failed to mount devpts: %v", err)
 	}
 
