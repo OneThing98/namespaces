@@ -202,17 +202,6 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 		return fmt.Errorf("failed to mount /proc: %v", err)
 	}
 
-	devPath := filepath.Join(rootfs, "dev")
-	if _, err := os.Stat(devPath); os.IsNotExist(err) {
-		if err := os.Mkdir(devPath, 0755); err != nil {
-			return fmt.Errorf("failed to create /dev directory in rootfs: %v", err)
-		}
-	}
-
-	if err := unix.Mount("/dev", devPath, "bind", unix.MS_BIND|unix.MS_REC, ""); err != nil {
-		return fmt.Errorf("failed to bind mount /dev: %v", err)
-	}
-
 	putOld = "/.pivot_root"
 	if err := unix.Unmount(putOld, unix.MNT_DETACH); err != nil {
 		return fmt.Errorf("failed to unmount old root: %v", err)
