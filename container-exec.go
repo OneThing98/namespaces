@@ -70,8 +70,10 @@ func ContainerExec(container *libcontainer.Container) error {
 			return fmt.Errorf("failed to setup console: %v", err)
 		}
 
+		fmt.Printf("Attempting to exec command: %s with args: %v\n", container.Command.Args[0], container.Command.Args)
 		if err := unix.Exec(container.Command.Args[0], container.Command.Args, os.Environ()); err != nil {
-			return fmt.Errorf("failed to exec command: %v", err)
+			fmt.Fprintf(os.Stderr, "failed to exec command %s: %v\n", container.Command.Args[0], err)
+			os.Exit(1)
 		}
 
 		// this should never be reached
