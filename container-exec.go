@@ -49,11 +49,6 @@ func ContainerExec(container *libcontainer.Container) error {
 			return fmt.Errorf("failed to create console: %v", err)
 		}
 
-		fmt.Println("Closing master and std file descriptors...")
-		if err := closeMasterAndStd(master); err != nil {
-			return fmt.Errorf("failed to close master and std: %v", err)
-		}
-
 		fmt.Println("Opening slave terminal...")
 		slave, err := openTerminal(console, unix.O_RDWR)
 		if err != nil {
@@ -71,6 +66,22 @@ func ContainerExec(container *libcontainer.Container) error {
 		}
 
 		fmt.Printf("Attempting to exec command: %s with args: %v\n", container.Command.Args[0], container.Command.Args)
+		// Close master and std file descriptors just before executing the command
+		fmt.Println("Closing master file descriptor...")
+		if err := unix.Close(int(master.Fd())); err != nil {
+			return fmt.Errorf("failed to close master: %v", err)
+		}
+		fmt.Println("Closing stdin, stdout, stderr...")
+		if err := unix.Close(0); err != nil {
+			return fmt.Errorf("failed to close stdin: %v", err)
+		}
+		if err := unix.Close(1); err != nil {
+			return fmt.Errorf("failed to close stdout: %v", err)
+		}
+		if err := unix.Close(2); err != nil {
+			return fmt.Errorf("failed to close stderr: %v", err)
+		}
+
 		if err := unix.Exec(container.Command.Args[0], container.Command.Args, os.Environ()); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to exec command %s: %v\n", container.Command.Args[0], err)
 			os.Exit(1)
@@ -114,24 +125,6 @@ func createMasterAndConsole() (*os.File, string, error) {
 	}
 	fmt.Printf("Created master and console: %s\n", console)
 	return master, console, nil
-}
-
-func closeMasterAndStd(master *os.File) error {
-	fmt.Println("Closing master file descriptor...")
-	if err := unix.Close(int(master.Fd())); err != nil {
-		return fmt.Errorf("failed to close master: %v", err)
-	}
-	fmt.Println("Closing stdin, stdout, stderr...")
-	if err := unix.Close(0); err != nil {
-		return fmt.Errorf("failed to close stdin: %v", err)
-	}
-	if err := unix.Close(1); err != nil {
-		return fmt.Errorf("failed to close stdout: %v", err)
-	}
-	if err := unix.Close(2); err != nil {
-		return fmt.Errorf("failed to close stderr: %v", err)
-	}
-	return nil
 }
 
 func openTerminal(name string, flag int) (*os.File, error) {
