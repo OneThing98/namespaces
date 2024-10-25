@@ -155,24 +155,31 @@ func dupSlave(slave *os.File) error {
 }
 
 func setupConsole(rootfs, console string) error {
-	fmt.Println("Setting up /dev/console in container root filesystem...")
+	fmt.Printf("Setting up /dev/console with console: %s in rootfs: %s\n", console, rootfs)
 	stat, err := os.Stat(console)
 	if err != nil {
+		fmt.Printf("Stat failed for console %s: %v\n", console, err)
 		return fmt.Errorf("stat console %s: %v", console, err)
 	}
 	st := stat.Sys().(*unix.Stat_t)
 	dest := filepath.Join(rootfs, "dev/console")
 
+	fmt.Printf("Creating /dev/console at %s\n", dest)
 	if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
+		fmt.Printf("Failed to remove old console: %v\n", err)
 		return fmt.Errorf("remove old console: %v", err)
 	}
 	if err := os.Chmod(console, 0600); err != nil {
+		fmt.Printf("Failed to chmod console: %v\n", err)
 		return fmt.Errorf("chmod console: %v", err)
 	}
 
 	if err := unix.Mknod(dest, st.Mode, int(st.Rdev)); err != nil {
+		fmt.Printf("Failed to mknod console: %v\n", err)
 		return fmt.Errorf("mknod console: %v", err)
 	}
+
+	fmt.Println("Successfully set up /dev/console")
 	return nil
 }
 
