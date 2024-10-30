@@ -35,35 +35,43 @@ func ContainerExec(container *libcontainer.Container) error {
 		fmt.Println("Child process created")
 		fmt.Printf("Container ID: %s\n", container.ID)
 		if err := unix.Sethostname([]byte(container.ID)); err != nil {
-			return fmt.Errorf("failed to set hostname: %v", err)
+			fmt.Fprintf(os.Stderr, "failed to set hostname: %v\n", err)
+			os.Exit(1)
 		}
 
-		fmt.Println("Setting up root filesystem...")
-		if err := SetupRootFilesystem(container); err != nil {
-			return fmt.Errorf("failed to setup rootfs: %v", err)
-		}
-
+		// Move terminal handling before SetupRootFilesystem
 		fmt.Println("Setting up terminal handling...")
 		master, console, err := createMasterAndConsole()
 		if err != nil {
-			return fmt.Errorf("failed to create console: %v", err)
+			fmt.Fprintf(os.Stderr, "failed to create console: %v\n", err)
+			os.Exit(1)
 		}
 		defer master.Close()
 
 		fmt.Println("Opening slave terminal...")
 		slave, err := openTerminal(console, unix.O_RDWR)
 		if err != nil {
-			return fmt.Errorf("failed to open slave terminal: %v", err)
+			fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Println("Duplicating slave to stdout and stderr...")
 		if err := dupSlave(slave); err != nil {
-			return fmt.Errorf("failed to duplicate slave: %v", err)
+			fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Now set up the root filesystem
+		fmt.Println("Setting up root filesystem...")
+		if err := SetupRootFilesystem(container); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to setup rootfs: %v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Println("Setting up /dev/console inside the container...")
 		if err := setupConsole(container.RootFs, console); err != nil {
-			return fmt.Errorf("failed to setup console: %v", err)
+			fmt.Fprintf(os.Stderr, "failed to setup console: %v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Printf("Attempting to exec command: %s with args: %v\n", container.Command.Args[0], container.Command.Args)
