@@ -48,6 +48,7 @@ func ContainerExec(container *libcontainer.Container) error {
 		if err != nil {
 			return fmt.Errorf("failed to create console: %v", err)
 		}
+		defer master.Close()
 
 		fmt.Println("Opening slave terminal...")
 		slave, err := openTerminal(console, unix.O_RDWR)
@@ -66,22 +67,6 @@ func ContainerExec(container *libcontainer.Container) error {
 		}
 
 		fmt.Printf("Attempting to exec command: %s with args: %v\n", container.Command.Args[0], container.Command.Args)
-		// Close master and std file descriptors just before executing the command
-		fmt.Println("Closing master file descriptor...")
-		if err := unix.Close(int(master.Fd())); err != nil {
-			return fmt.Errorf("failed to close master: %v", err)
-		}
-		fmt.Println("Closing stdin, stdout, stderr...")
-		if err := unix.Close(0); err != nil {
-			return fmt.Errorf("failed to close stdin: %v", err)
-		}
-		if err := unix.Close(1); err != nil {
-			return fmt.Errorf("failed to close stdout: %v", err)
-		}
-		if err := unix.Close(2); err != nil {
-			return fmt.Errorf("failed to close stderr: %v", err)
-		}
-
 		if err := unix.Exec(container.Command.Args[0], container.Command.Args, os.Environ()); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to exec command %s: %v\n", container.Command.Args[0], err)
 			os.Exit(1)
@@ -137,12 +122,13 @@ func openTerminal(name string, flag int) (*os.File, error) {
 }
 
 func dupSlave(slave *os.File) error {
-	fmt.Println("Duplicating slave to stdout and stderr...")
+	fmt.Println("Duplicating slave to stdout...")
 	if err := unix.Dup2(int(slave.Fd()), 1); err != nil {
-		return err
+		return fmt.Errorf("failed to duplicate slave to stdout: %v", err)
 	}
+	fmt.Println("Duplicating slave to stderr...")
 	if err := unix.Dup2(int(slave.Fd()), 2); err != nil {
-		return err
+		return fmt.Errorf("failed to duplicate slave to stderr: %v", err)
 	}
 	return nil
 }
