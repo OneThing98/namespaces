@@ -3,6 +3,7 @@ package namespaces
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"golang.org/x/sys/unix"
@@ -20,86 +21,72 @@ func JoinExistingNamespace(fd uintptr, ns libcontainer.Namespace) error {
 }
 
 func ContainerExec(container *libcontainer.Container) error {
-	flags := unix.CLONE_NEWPID | unix.CLONE_NEWUTS | unix.CLONE_NEWNS | unix.CLONE_NEWIPC | unix.SIGCHLD
+	if os.Getenv("IS_CHILD") != "1" {
+		cmd := exec.Command(os.Args[0], os.Args[1:]...)
+		cmd.Env = append(os.Environ(), "IS_CHILD=1")
+		cmd.SysProcAttr = &unix.SysProcAttr{
+			Cloneflags: unix.CLONE_NEWPID | unix.CLONE_NEWUTS | unix.CLONE_NEWNS | unix.CLONE_NEWIPC,
+		}
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-	fmt.Println("Starting container exec...")
-	fmt.Printf("Flags for clone: %d\n", flags)
-
-	pid, _, errno := unix.RawSyscall(unix.SYS_CLONE, uintptr(flags), 0, 0)
-	if errno != 0 {
-		return fmt.Errorf("unix clone failed: %v", errno)
+		fmt.Println("Starting container exec...")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("error executing container command: %v", err)
+		}
+		return nil
 	}
 
-	if pid == 0 {
-		// this is the child process
-		fmt.Println("Child process created")
-		fmt.Printf("Container ID: %s\n", container.ID)
-		if err := unix.Sethostname([]byte(container.ID)); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to set hostname: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Move terminal handling before SetupRootFilesystem
-		fmt.Println("Setting up terminal handling...")
-		master, console, err := createMasterAndConsole()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to create console: %v\n", err)
-			os.Exit(1)
-		}
-		defer master.Close()
-
-		fmt.Println("Opening slave terminal...")
-		slave, err := openTerminal(console, unix.O_RDWR)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Duplicating slave to stdout and stderr...")
-		if err := dupSlave(slave); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Now set up the root filesystem
-		fmt.Println("Setting up root filesystem...")
-		if err := SetupRootFilesystem(container); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to setup rootfs: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Setting up /dev/console inside the container...")
-		if err := setupConsole(container.RootFs, console); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to setup console: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Attempting to exec command: %s with args: %v\n", container.Command.Args[0], container.Command.Args)
-		if err := unix.Exec(container.Command.Args[0], container.Command.Args, os.Environ()); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to exec command %s: %v\n", container.Command.Args[0], err)
-			os.Exit(1)
-		}
-
-		// this should never be reached
+	// Child process code
+	fmt.Println("Child process created")
+	fmt.Printf("Container ID: %s\n", container.ID)
+	if err := unix.Sethostname([]byte(container.ID)); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to set hostname: %v\n", err)
 		os.Exit(1)
-	} else if pid > 0 {
-		// this is the parent process
-		fmt.Printf("Parent process, waiting for child pid: %d\n", pid)
-		var ws unix.WaitStatus
-		_, err := unix.Wait4(int(pid), &ws, 0, nil)
-		if err != nil {
-			return fmt.Errorf("error waiting for process: %v", err)
-		}
-
-		if ws.Exited() {
-			fmt.Printf("Process exited with code %d\n", ws.ExitStatus())
-		} else {
-			fmt.Printf("Process terminated abnormally\n")
-		}
-	} else {
-		return fmt.Errorf("fork failed: %v", errno)
 	}
 
+	fmt.Println("Setting up terminal handling...")
+	master, console, err := createMasterAndConsole()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create console: %v\n", err)
+		os.Exit(1)
+	}
+	defer master.Close()
+
+	fmt.Println("Opening slave terminal...")
+	slave, err := openTerminal(console, unix.O_RDWR)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Duplicating slave to stdout and stderr...")
+	if err := dupSlave(slave); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Setting up root filesystem...")
+	if err := SetupRootFilesystem(container); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to setup rootfs: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Setting up /dev/console inside the container...")
+	if err := setupConsole(container.RootFs, console); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to setup console: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Attempting to exec command: %s with args: %v\n", container.Command.Args[0], container.Command.Args)
+	if err := unix.Exec(container.Command.Args[0], container.Command.Args, os.Environ()); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to exec command %s: %v\n", container.Command.Args[0], err)
+		os.Exit(1)
+	}
+
+	// Should never reach here
+	os.Exit(1)
 	return nil
 }
 
@@ -130,23 +117,14 @@ func openTerminal(name string, flag int) (*os.File, error) {
 }
 
 func dupSlave(slave *os.File) error {
-	if slave == nil {
-		return fmt.Errorf("slave file descriptor is nil")
-	}
-
-	fd := slave.Fd()
-	fmt.Printf("Duplicating slave to stdout (fd: %d)...\n", fd)
-	if err := unix.Dup2(int(fd), 1); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to duplicate slave to stdout: %v (fd: %d)\n", err, fd)
+	fmt.Println("Duplicating slave to stdout...")
+	if err := unix.Dup2(int(slave.Fd()), 1); err != nil {
 		return fmt.Errorf("failed to duplicate slave to stdout: %v", err)
 	}
-
-	fmt.Printf("Duplicating slave to stderr (fd: %d)...\n", fd)
-	if err := unix.Dup2(int(fd), 2); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to duplicate slave to stderr: %v (fd: %d)\n", err, fd)
+	fmt.Println("Duplicating slave to stderr...")
+	if err := unix.Dup2(int(slave.Fd()), 2); err != nil {
 		return fmt.Errorf("failed to duplicate slave to stderr: %v", err)
 	}
-
 	return nil
 }
 
