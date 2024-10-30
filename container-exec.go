@@ -122,14 +122,23 @@ func openTerminal(name string, flag int) (*os.File, error) {
 }
 
 func dupSlave(slave *os.File) error {
-	fmt.Println("Duplicating slave to stdout...")
-	if err := unix.Dup2(int(slave.Fd()), 1); err != nil {
+	if slave == nil {
+		return fmt.Errorf("slave file descriptor is nil")
+	}
+
+	fd := slave.Fd()
+	fmt.Printf("Duplicating slave to stdout (fd: %d)...\n", fd)
+	if err := unix.Dup2(int(fd), 1); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to duplicate slave to stdout: %v (fd: %d)\n", err, fd)
 		return fmt.Errorf("failed to duplicate slave to stdout: %v", err)
 	}
-	fmt.Println("Duplicating slave to stderr...")
-	if err := unix.Dup2(int(slave.Fd()), 2); err != nil {
+
+	fmt.Printf("Duplicating slave to stderr (fd: %d)...\n", fd)
+	if err := unix.Dup2(int(fd), 2); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to duplicate slave to stderr: %v (fd: %d)\n", err, fd)
 		return fmt.Errorf("failed to duplicate slave to stderr: %v", err)
 	}
+
 	return nil
 }
 
