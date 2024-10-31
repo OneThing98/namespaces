@@ -141,7 +141,7 @@ func setupConsole(rootfs, console string) error {
 
 	// Change the type assertion to *syscall.Stat_t
 	st := stat.Sys().(*syscall.Stat_t)
-	dest := filepath.Join(rootfs, "dev/console")
+	dest := "/dev/console"
 
 	fmt.Printf("Creating /dev/console at %s\n", dest)
 	if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
