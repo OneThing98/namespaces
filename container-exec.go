@@ -46,6 +46,14 @@ func ContainerExec(container *libcontainer.Container) error {
 		os.Exit(1)
 	}
 
+	// Set up the root filesystem first
+	fmt.Println("Setting up root filesystem...")
+	if err := SetupRootFilesystem(container); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to setup rootfs: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Now set up terminal handling
 	fmt.Println("Setting up terminal handling...")
 	master, console, err := createMasterAndConsole()
 	if err != nil {
@@ -54,22 +62,16 @@ func ContainerExec(container *libcontainer.Container) error {
 	}
 	defer master.Close()
 
-	// fmt.Println("Opening slave terminal...")
-	// slave, err := openTerminal(console, unix.O_RDWR)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
-	// 	os.Exit(1)
-	// }
+	fmt.Println("Opening slave terminal...")
+	slave, err := openTerminal(console, unix.O_RDWR)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
+		os.Exit(1)
+	}
 
-	// fmt.Println("Duplicating slave to stdout and stderr...")
-	// if err := dupSlave(slave); err != nil {
-	// 	fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
-	// 	os.Exit(1)
-	// }
-
-	fmt.Println("Setting up root filesystem...")
-	if err := SetupRootFilesystem(container); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to setup rootfs: %v\n", err)
+	fmt.Println("Duplicating slave to stdout and stderr...")
+	if err := dupSlave(slave); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -217,3 +219,5 @@ func SetupRootFilesystem(container *libcontainer.Container) error {
 
 	return nil
 }
+
+//found the cause it was due to using pivot root too early. use the code provided in gpt o1 advaanced reasoning or sth
