@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 
@@ -137,7 +138,9 @@ func setupConsole(rootfs, console string) error {
 		fmt.Printf("Stat failed for console %s: %v\n", console, err)
 		return fmt.Errorf("stat console %s: %v", console, err)
 	}
-	st := stat.Sys().(*unix.Stat_t)
+
+	// Change the type assertion to *syscall.Stat_t
+	st := stat.Sys().(*syscall.Stat_t)
 	dest := filepath.Join(rootfs, "dev/console")
 
 	fmt.Printf("Creating /dev/console at %s\n", dest)
@@ -150,7 +153,8 @@ func setupConsole(rootfs, console string) error {
 		return fmt.Errorf("chmod console: %v", err)
 	}
 
-	if err := unix.Mknod(dest, st.Mode, int(st.Rdev)); err != nil {
+	// Use the correct types and cast as needed
+	if err := unix.Mknod(dest, uint32(st.Mode), int(st.Rdev)); err != nil {
 		fmt.Printf("Failed to mknod console: %v\n", err)
 		return fmt.Errorf("mknod console: %v", err)
 	}
