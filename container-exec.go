@@ -63,18 +63,18 @@ func ContainerExec(container *libcontainer.Container) error {
 	}
 	defer master.Close()
 
-	fmt.Println("Opening slave terminal...")
-	slave, err := openTerminal(console, unix.O_RDWR)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
-		os.Exit(1)
-	}
+	// fmt.Println("Opening slave terminal...")
+	// slave, err := openTerminal(console, unix.O_RDWR)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "failed to open slave terminal: %v\n", err)
+	// 	os.Exit(1)
+	// }
 
-	fmt.Println("Duplicating slave to stdout and stderr...")
-	if err := dupSlave(slave); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
-		os.Exit(1)
-	}
+	// fmt.Println("Duplicating slave to stdout and stderr...")
+	// if err := dupSlave(slave); err != nil {
+	// 	fmt.Fprintf(os.Stderr, "failed to duplicate slave: %v\n", err)
+	// 	os.Exit(1)
+	// }
 
 	fmt.Println("Setting up /dev/console inside the container...")
 	if err := setupConsole(container.RootFs, console); err != nil {
